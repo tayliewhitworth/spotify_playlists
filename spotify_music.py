@@ -1,7 +1,7 @@
 import time
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from flask import Flask, request, redirect, url_for, session
+from flask import Flask, request, redirect, url_for, session, render_template
 from dotenv import load_dotenv
 import os
 
@@ -31,7 +31,48 @@ def redirect_page():
     code = request.args.get('code')
     token_info = create_spotify_oauth().get_access_token(code)
     session[TOKEN_INFO] = token_info
-    return redirect(url_for('create_playlist', _external=True))
+    return redirect(url_for('playlists', _external=True))
+
+@app.route('/playlists')
+def playlists():
+    try:
+        token_info = get_token()
+    except:
+        print('User not logged in')
+        return redirect('/')
+
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    playlists = sp.current_user_playlists()['items']
+    playlist_names = [playlist['name'] for playlist in playlists]
+    return render_template('playlists.html', playlists=playlist_names)
+
+@app.route('/playlist/<playlist_name>')
+def playlist(playlist_name):
+    # work on this function and fix it - where I left off
+    try:
+        token_info = get_token()
+    except:
+        print('User not logged in')
+        return redirect('/')
+
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    user_id = sp.current_user()['id']
+    playlists = sp.current_user_playlists()['items']
+    playlist_id = None
+    for playlist in playlists:
+        if playlist['name'] == playlist_name:
+            playlist_id = playlist['id']
+            break
+    if not playlist_id:
+        return '''
+            <script>
+                alert('Playlist not found!');
+                window.location.href = '/playlists';
+            </script>
+        '''
+    tracks = sp.playlist_tracks(playlist_id)['items']
+    track_names = [track['track']['name'] for track in tracks]
+    return render_template('playlist.html', playlist_name=playlist_name, tracks=track_names)
 
 @app.route('/createplaylist', methods=['GET', 'POST'])
 def create_playlist():
@@ -57,16 +98,10 @@ def create_playlist():
                         </script>
                     '''
             sp.user_playlist_create(user_id, playlist_name, True)
-            return('Playlist Created Successfully!')
+            return redirect(url_for('playlists', _external=True))
 
 
-    return '''
-        <form method="post">
-            <label for="playlist_name">Playlist Name:</label>
-            <input type="text" id="playlist_name" name="playlist_name" required>
-            <input type="submit" value="Create Playlist">
-        </form>
-    '''
+    return render_template('createplaylist.html')
 
 
 

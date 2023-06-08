@@ -1,0 +1,20 @@
+{% extends 'base.html' %} {% block head %}
+<title>Playlist</title>
+{% endblock %} {% block body %}
+<div class="center-items spacing">
+  <div class="self-end spacing">
+    <a href="/playlists">All Playlists</a>
+  </div>
+  <h1>{{ playlist_name }}</h1>
+  <ul>
+    {% if tracks %}
+      {% for track in tracks %}
+      <li>{{ track }}</li>
+      {% endfor %}
+    {% else %}
+      <li>No tracks in playlist</li>
+    {% endif %}
+  </ul>
+</div>
+
+{% endblock %}

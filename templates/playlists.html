@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+
+{% block head %}
+<title>Playlists</title>
+{% endblock %}
+
+{% block body %}
+<div class="center-items spacing">
+    <h1>Your Playlists</h1>
+    <p>Add a playlist</p>
+    <span><a href="/createplaylist">Click here!</a></span>
+    <ul>
+        {% for playlist in playlists %}
+        <li><a class="playlist_name" href="/playlist/{{ playlist }}">{{ playlist }}</a></li>
+        <!-- <li>{{ playlist }}</li> -->
+        {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}
