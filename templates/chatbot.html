@@ -1,0 +1,44 @@
+{% extends 'base.html' %} {% block head %}
+<title>Spotty The Bot</title>
+{% endblock %} {% block body %}
+<div class="flex flex-col items-center justify-center gap-3 p-4">
+  <div class="text-white p-6 self-start">
+    <a class="p-2 bg-emerald-600 rounded-lg self-start" href="/playlists">All Playlists</a>
+  </div>
+  <h1 class="font-bold text-lg">Build your perfect playlist!</h1>
+  <p class="text-slate-500">
+    This is a chatbot that will ask questions and find the perfect songs just
+    for you!
+  </p>
+  <div class="flex flex-col items-center gap-3">
+    {% if bot_question %}
+    <p>
+      <span class="text-emerald-400 font-semibold">Spotty: </span>{{
+      bot_question }}
+    </p>
+    {% endif %} {% if user_response %}
+    <p>
+      <span class="text-emerald-600 font-semibold">You: </span>{{ user_response
+      }}
+    </p>
+    {% endif %}
+  </div>
+
+  <form method="POST">
+    <input
+      class="bg-slate-500 rounded-lg text-white p-2"
+      type="text"
+      name="user_response"
+      id="user_response"
+      placeholder="Type your response here..."
+      required
+    />
+    <input
+      class="bg-emerald-400 text-white rounded-lg p-2 cursor-pointer"
+      type="submit"
+      value="Send"
+    />
+  </form>
+</div>
+
+{% endblock %}

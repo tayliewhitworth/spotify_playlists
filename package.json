@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "tailwindcss": "^3.3.2"
+  },
+  "scripts": {
+    "build-css": "npx tailwindcss -i src/styles.css -o static/css/styles.css",
+    "watch-css": "nodemon -e css -x \"npm run build-css\""
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

@@ -24,12 +24,18 @@ def login():
     return redirect(auth_url)
 
 
-
 @app.route('/redirect')
 def redirect_page():
     session.clear()
     code = request.args.get('code')
-    token_info = create_spotify_oauth().get_access_token(code)
+    spotify_oauth = create_spotify_oauth()
+    # token_info = create_spotify_oauth().get_access_token(code)
+    token_info = spotify_oauth.get_cached_token()
+
+    if token_info is None:
+        token_info = spotify_oauth.refresh_access_token(code)
+
+
     session[TOKEN_INFO] = token_info
     return redirect(url_for('playlists', _external=True))
 
@@ -48,7 +54,6 @@ def playlists():
 
 @app.route('/playlist/<playlist_name>')
 def playlist(playlist_name):
-    # work on this function and fix it - where I left off
     try:
         token_info = get_token()
     except:
@@ -56,7 +61,6 @@ def playlist(playlist_name):
         return redirect('/')
 
     sp = spotipy.Spotify(auth=token_info['access_token'])
-    user_id = sp.current_user()['id']
     playlists = sp.current_user_playlists()['items']
     playlist_id = None
     for playlist in playlists:
@@ -73,6 +77,78 @@ def playlist(playlist_name):
     tracks = sp.playlist_tracks(playlist_id)['items']
     track_names = [track['track']['name'] for track in tracks]
     return render_template('playlist.html', playlist_name=playlist_name, tracks=track_names)
+
+@app.route('/chatbot', methods=['GET', 'POST'])
+def chatbot():
+    try:
+        token_info = get_token()
+    except:
+        print('User not logged in')
+        return redirect('/')
+    
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    user_id = sp.current_user()['id']
+    user_response = ''
+
+    bot_questions = {
+        'artist': 'Who is your favorite artist?',
+        'genre': 'What is your favorite genre?',
+        'song': 'What is your favorite song?',
+        'confirm': 'Would you like to save these tracks to a new playlist called: My Favorites?'
+    }
+
+    if 'chatbot_state' not in session:
+        session['chatbot_state'] = 'artist'
+
+    if request.method == 'POST':
+        user_response = request.form.get('user_response')
+        session['chatbot_responses'][session['chatbot_state']] = user_response
+
+        if session['chatbot_state'] == 'song':
+            seed_artist = sp.search(q='artist:' + session['chatbot_responses']['artist'], type='artist')['artists']['items'][0]['id']
+            seed_genre = session['chatbot_responses']['genre']
+            seed_track = sp.search(q='track:' + session['chatbot_responses']['song'], type='track')['tracks']['items'][0]['id']
+
+            recommendations = sp.recommendations(seed_artists=[seed_artist], seed_genres=[seed_genre], seed_tracks=[seed_track], limit=10)
+
+            session['recommended_tracks'] = [track['id'] for track in recommendations['tracks']]
+            session['chatbot_state'] = 'confirm'
+
+        elif session['chatbot_state'] == 'confirm' and user_response.lower() in ['yes', 'y']:
+            user_playlists = sp.current_user_playlists()['items']
+            playlist_id = None
+            for playlist in user_playlists:
+                if playlist['name'] == 'My Favorites':
+                    playlist_id = playlist['id']
+                    break
+            if not playlist_id:
+                new_playlist = sp.user_playlist_create(user_id, 'My Favorites', public=True)
+                playlist_id = new_playlist['id']
+
+            sp.user_playlist_add_tracks(user_id, playlist_id, session['recommended_tracks'])
+
+            session.pop('chatbot_state')
+            session.pop('chatbot_responses')
+            session.pop('recommended_tracks')
+
+            return redirect(url_for('playlists', _external=True))
+        
+        elif session['chatbot_state'] == 'confirm' and user_response.lower() in ['no', 'n']:
+            session.pop('chatbot_state')
+            session.pop('chatbot_responses')
+            session.pop('recommended_tracks')
+
+            return redirect(url_for('playlists', _external=True))
+        else:
+            session['chatbot_state'] = 'genre' if session['chatbot_state'] == 'artist' else 'song'
+
+    if 'chatbot_responses' not in session:
+        session['chatbot_responses'] = {}
+
+    bot_question = bot_questions[session['chatbot_state']]
+
+    return render_template('chatbot.html', bot_question=bot_question, user_response=user_response)
+
 
 @app.route('/createplaylist', methods=['GET', 'POST'])
 def create_playlist():
