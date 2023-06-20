@@ -1,18 +1,18 @@
 {% extends 'base.html' %} {% block head %}
 <title>Playlist</title>
 {% endblock %} {% block body %}
-<div>
-  <div>
-    <a href="/playlists">All Playlists</a>
+<div class="flex items-center justify-center flex-col">
+  <div class="p-4 m-4 self-start">
+    <a class="bg-emerald-500 rounded-lg p-2" href="/playlists">All Playlists</a>
   </div>
-  <h1>{{ playlist_name }}</h1>
-  <ul>
-    {% if tracks %}
-      {% for track in tracks %}
-      <li>{{ track }}</li>
-      {% endfor %}
-    {% else %}
-      <li>No tracks in playlist</li>
+  <h1 class="text-lg font-bold mb-4">
+    {{ playlist_name }}
+  </h1>
+  <ul class="flex flex-col gap-3">
+    {% if tracks %} {% for track in tracks %}
+    <li class="bg-emerald-500 rounded-lg p-2">{{ track }}</li>
+    {% endfor %} {% else %}
+    <li>No tracks in playlist</li>
     {% endif %}
   </ul>
 </div>

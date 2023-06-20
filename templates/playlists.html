@@ -1,13 +1,23 @@
 {% extends 'base.html' %} {% block head %}
 <title>Playlists</title>
 {% endblock %} {% block body %}
-<div class="flex flex-col items-center justify-center">
-  <h1>Your Playlists</h1>
-  <p>Add a playlist</p>
-  <span><a href="/chatbot">Click here!</a></span>
-  <ul>
+<div class="flex flex-col items-center justify-center gap-3 m-2">
+  <div class="self-start m-4 flex gap-4 items-center">
+    <a class="bg-emerald-500 rounded-lg p-2 m-2" href="/chatbot"
+      >Add a playlist</a
+    >
+    <a class="bg-emerald-500 rounded-lg p-2 m-2" href="/chatroom"
+      >Chat with users</a
+    >
+  </div>
+  <h1 class="text-emerald-500 font-bold text-lg">Your Playlists</h1>
+  <ul class="flex flex-col gap-3">
     {% for playlist in playlists %}
-    <li><a href="/playlist/{{ playlist }}">{{ playlist }}</a></li>
+    <li
+      class="bg-emerald-500 rounded-lg p-2 hover:bg-emerald-700 transition-colors"
+    >
+      <a href="/playlist/{{ playlist }}">{{ playlist }}</a>
+    </li>
     <!-- <li>{{ playlist }}</li> -->
     {% endfor %}
   </ul>
