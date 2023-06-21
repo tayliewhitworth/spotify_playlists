@@ -4,6 +4,9 @@ from spotipy.oauth2 import SpotifyOAuth
 from flask import Flask, request, redirect, url_for, session, render_template
 from dotenv import load_dotenv
 import os
+import random
+from string import ascii_uppercase
+from flask_socketio import SocketIO, emit, join_room, leave_room, send
 
 load_dotenv()
 
@@ -15,6 +18,9 @@ app = Flask(__name__)
 
 app.config['SESSION_COOKIE_NAME'] = 'spotify-login-session'
 app.secret_key = secret_key
+socketio = SocketIO(app)
+
+rooms = {}
 
 TOKEN_INFO = 'token_info'
 
@@ -179,6 +185,86 @@ def create_playlist():
 
     return render_template('createplaylist.html')
 
+@app.route('/chatrooms', methods=['GET', 'POST'])
+def chatrooms():
+    session.clear()
+    if request.method == "POST":
+        name = request.form.get('name')
+        code = request.form.get('code')
+        join = request.form.get('join', False)
+        create = request.form.get('create', False)
+
+        if not name:
+            return render_template('chatrooms.html', error='Please enter a name to continue', code=code, name=name)
+        
+        if join != False and not code:
+            return render_template('chatrooms.html', error='Please enter a room code to continue', code=code, name=name)
+        
+        room = code
+        if create != False:
+            room = generate_unique_code(4)
+            rooms[room] = {'members': 0, 'messages': []}
+        elif code not in rooms:
+            return render_template('chatrooms.html', error='Room does not exist', code=code, name=name)
+        
+        session['name'] = name
+        session['room'] = room
+        return redirect(url_for('chatroom', _external=True))
+    
+    return render_template('chatrooms.html')
+
+@app.route('/chatroom')
+def chatroom():
+    room = session.get('room')
+    if room is None or session.get('name') is None or room not in rooms:
+        return redirect(url_for('chatrooms', _external=True))
+    
+    return render_template('chatroom.html', code=room, messages=rooms[room]['messages'])
+
+@socketio.on('message')
+def message(data):
+    room = session.get('room')
+    if room not in rooms:
+        return
+    
+    content = {
+        'name': session.get('name'),
+        'message': data['data'],
+    }
+    send(content, to=room)
+    rooms[room]['messages'].append(content)
+    print(f'{session.get("name")} said: {data["data"]}')
+
+@socketio.on('connect')
+def connect(auth):
+    room = session.get('room')
+    name = session.get('name')
+    if not room or not name:
+        return
+    if room not in rooms:
+        leave_room(room)
+        return
+    
+    join_room(room)
+    send({'name': name, 'message': f'{name} has joined the room'}, to=room)
+    rooms[room]['members'] += 1
+    print(f'{name} has joined the room {room}')
+
+@socketio.on('disconnect')
+def disconnect():
+    room = session.get('room')
+    name = session.get('name')
+    leave_room(room)
+
+    if room in rooms:
+        rooms[room]['members'] -= 1
+        if rooms[room]['members'] <= 0:
+            del rooms[room]
+
+
+    send({'name': name, 'message': f'{name} has left the room'}, to=room)
+    print(f'{name} has left the room {room}')
+
 
 
 def get_token():
@@ -204,4 +290,16 @@ def create_spotify_oauth():
         cache_path='token.txt'
     )
 
-app.run(debug=True)
+def generate_unique_code(length):
+    while True:
+        code = ''
+        for _ in range(length):
+            code += random.choice(ascii_uppercase)
+        if code not in rooms:
+            break
+
+    return code
+
+# app.run(debug=True)
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
